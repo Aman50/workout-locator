@@ -19,17 +19,18 @@ class Workout {
     this.coords = coords; // [lat, lng]
     this.distance = distance; // in km
     this.duration = duration; // in mins
-
   }
 
   _setDescription() {
     // Running on April 14
     const formattedDate = new Intl.DateTimeFormat(undefined, {
-        month: 'long',
-        day: '2-digit'
+      month: "long",
+      day: "2-digit",
     }).format(this.date);
 
-    this.description = `${this.type === 'running' ? '🏃‍♂️' : ''} ${this.type[0].toUpperCase() + this.type.slice(1)} on ${formattedDate}`;
+    this.description = `${this.type === "running" ? "🏃‍♂️" : ""} ${
+      this.type[0].toUpperCase() + this.type.slice(1)
+    } on ${formattedDate}`;
   }
 }
 
@@ -195,9 +196,9 @@ class App {
       inputElevation.value =
         "";
 
-    form.style.display = 'none';
+    form.style.display = "none";
     form.classList.add("hidden");
-    setTimeout(() => form.style.display = 'grid', 1000);
+    setTimeout(() => (form.style.display = "grid"), 1000);
   }
 
   _renderElementInList(workout) {
@@ -205,7 +206,9 @@ class App {
     <li class="workout workout--${workout.type}" data-id="${workout.id}">
         <h2 class="workout__title">${workout.description}</h2>
         <div class="workout__details">
-        <span class="workout__icon">${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️' }</span>
+        <span class="workout__icon">${
+          workout.type === "running" ? "🏃‍♂️" : "🚴‍♀️"
+        }</span>
         <span class="workout__value">${workout.distance}</span>
         <span class="workout__unit">km</span>
         </div>
@@ -216,8 +219,8 @@ class App {
         </div>
     `;
 
-    if (workout.type === 'running') {
-        html += `
+    if (workout.type === "running") {
+      html += `
         <div class="workout__details">
             <span class="workout__icon">⚡️</span>
             <span class="workout__value">${workout.cadence}</span>
@@ -232,8 +235,8 @@ class App {
         `;
     }
 
-    if (workout.type === 'cycling') {
-        html += `
+    if (workout.type === "cycling") {
+      html += `
         <div class="workout__details">
         <span class="workout__icon">⚡️</span>
         <span class="workout__value">${workout.speed.toFixed(1)}</span>
@@ -248,7 +251,7 @@ class App {
         `;
     }
 
-    form.insertAdjacentHTML('afterend', html);
+    form.insertAdjacentHTML("afterend", html);
   }
 
   _renderMarker(workout) {
