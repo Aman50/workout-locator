@@ -83,12 +83,33 @@
   .workout--cycling {
     border-left: 5px solid var(--color-brand--1);
   }
+
+  .workout__header {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+
+  }
   
   .workout__title {
     font-size: 1.7rem;
     font-weight: 600;
-    grid-column: 1 / -1;
   }
+
+  .workout__icon--delete {
+    color: var(--color-brand--1);
+    cursor: pointer;
+    transition: 0.5s all;
+    align-self: flex-start;
+    margin-top: -1rem;
+  }
+
+  .workout__icon--delete:hover {
+    transform: scale(1.1);
+    font-weight: bold;
+  }
+
+
   
   .workout__details {
     display: flex;

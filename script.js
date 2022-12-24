@@ -1,8 +1,5 @@
 "use strict";
 
-// prettier-ignore
-const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
 const form = document.querySelector(".form");
 const containerWorkouts = document.querySelector(".workouts");
 const inputType = document.querySelector(".form__input--type");
@@ -14,6 +11,7 @@ const inputElevation = document.querySelector(".form__input--elevation");
 class Workout {
   date = new Date();
   id = uuid.v4();
+  clicks = 0;
 
   constructor(coords, distance, duration) {
     this.coords = coords; // [lat, lng]
@@ -31,6 +29,10 @@ class Workout {
     this.description = `${this.type === "running" ? "🏃‍♂️" : ""} ${
       this.type[0].toUpperCase() + this.type.slice(1)
     } on ${formattedDate}`;
+  }
+
+  incrementClick() {
+    this.clicks++;
   }
 }
 
@@ -70,17 +72,23 @@ class App {
   #map;
   #coordinates;
   workouts = [];
+  workoutMarkers = [];
 
   constructor() {
+    // Get GeoLocation of the user
     this._getCurrentPosition();
-    inputType.addEventListener(
-      "change",
-      this._toggleCadeneElevation.bind(this)
-    );
+
+    // Get workouts from local storage
+    this.getLocalStorage();
+
+    // Event handlers
+    inputType.addEventListener("change", this._toggleCadeneElevation.bind(this));
     form.addEventListener("submit", this._submitForm.bind(this));
+    containerWorkouts.addEventListener('click', this._workoutClick.bind(this));
   }
 
   _getCurrentPosition() {
+    // Async function
     navigator.geolocation.getCurrentPosition(
       this._initMap.bind(this),
       function () {
@@ -90,6 +98,7 @@ class App {
   }
 
   _initMap(position) {
+    // Initialize leaflet map instance
     const { latitude, longitude } = position.coords;
     const coords = [latitude, longitude];
 
@@ -101,9 +110,14 @@ class App {
     }).addTo(this.#map);
 
     this.#map.on("click", this._displayForm.bind(this));
+
+    if (this.workouts) {
+      this.workouts.forEach(workout => this._renderMarker(workout));
+    }
   }
 
   _displayForm(mapEvent) {
+    // Dislay workout form
     const { lat, lng } = mapEvent.latlng;
     this.#coordinates = [lat, lng];
 
@@ -117,6 +131,7 @@ class App {
   }
 
   _submitForm(e) {
+    // Perform validation and add the workout to UI
     e.preventDefault();
 
     const areValidNumbers = function (...values) {
@@ -128,6 +143,7 @@ class App {
     };
 
     let newWorkout;
+
     // Running
     if (inputType.value === "running") {
       if (
@@ -183,10 +199,45 @@ class App {
     }
 
     this.workouts.push(newWorkout);
+
     this._renderMarker(newWorkout);
-    this._renderElementInList(newWorkout);
+    
+    this._renderWorkoutInList(newWorkout);
+
+    this.setLocalStorage();
 
     this._hideForm();
+  }
+
+  setLocalStorage() {
+    // Save workouts array to local storage
+    localStorage.setItem('workouts', JSON.stringify(this.workouts));
+  }
+
+  getLocalStorage() {
+    // Fetch workouts from local storage and render them on UI
+    const workouts = JSON.parse(localStorage.getItem('workouts'));
+
+    // Guard Clause
+    if (!workouts) return;
+
+    this.workouts = workouts.map(workout => {
+      let workoutObj;
+
+      if (workout.type === 'cycling') {
+        workoutObj = new Cycling(workout.coords, workout.distance, workout.duration, workout.elevationGain);
+      }
+
+      if (workout.type === 'running') {
+        workoutObj = new Running(workout.coords, workout.distance, workout.duration, workout.cadence);
+      }
+
+      return workoutObj;
+    });
+
+    this.workouts.forEach(workout => {
+      this._renderWorkoutInList(workout);
+    });
   }
 
   _hideForm() {
@@ -201,10 +252,14 @@ class App {
     setTimeout(() => (form.style.display = "grid"), 1000);
   }
 
-  _renderElementInList(workout) {
+  _renderWorkoutInList(workout) {
+    // Render a workout on UI
     let html = `
     <li class="workout workout--${workout.type}" data-id="${workout.id}">
-        <h2 class="workout__title">${workout.description}</h2>
+    <div class="workout__header">
+    <h2 class="workout__title">${workout.description}</h2>
+    <span class="workout__icon workout__icon--delete">x</span>
+    </div>
         <div class="workout__details">
         <span class="workout__icon">${
           workout.type === "running" ? "🏃‍♂️" : "🚴‍♀️"
@@ -254,8 +309,20 @@ class App {
     form.insertAdjacentHTML("afterend", html);
   }
 
+  _renderWorkoutList() {
+    // Re-render all workouts on UI
+    containerWorkouts.querySelectorAll('li').forEach(liEl => {
+      console.log(liEl);
+      liEl.remove();
+    });
+
+    this.workouts.forEach(workout => this._renderWorkoutInList(workout));
+  }
+  
+
   _renderMarker(workout) {
-    L.marker(this.#coordinates)
+    // Render workout on leaflet map
+    const marker = L.marker(workout.coords)
       .addTo(this.#map)
       .bindPopup(workout.description, {
         autoClose: false,
@@ -263,7 +330,50 @@ class App {
         className: `${workout.type}-popup`,
       })
       .openPopup();
+
+      this.workoutMarkers.push(marker);
   }
+
+  _workoutClick(e) {
+    // Handler function - Either deletes a workout or locates the workout on leaflet map
+    if (e.target.classList.contains('workout__icon--delete')) {
+      this._deleteWorkout(e.target.closest('.workout'));
+
+    } else if (e.target.closest('.workout')) {
+      this._scrollToWorkout(e.target.closest('.workout'));
+    }
+  }
+
+  _deleteWorkout(workoutEl) {
+    // Delete a workout
+    const workoutId = workoutEl.dataset.id;
+
+    const workoutIndex = this.workouts.findIndex(workout => workout.id == workoutId);
+
+    this.workouts.splice(workoutIndex, 1);
+
+    this.workoutMarkers[workoutIndex].remove();
+
+    this.workoutMarkers.splice(workoutIndex, 1);
+
+    this._renderWorkoutList();
+
+    this.setLocalStorage();
+  }
+
+  _scrollToWorkout(workoutEl) {
+
+    const workout = this.workouts.find(workout => workout.id === workoutEl.dataset.id);
+    
+    this.#map.setView(workout.coords, this.#map.getZoom(), {
+      animate: true,
+      duration: 1
+    });
+
+    // Increasing number of clicks
+    workout.incrementClick();
+  }
+
 }
 
 const app = new App();
